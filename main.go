@@ -3,14 +3,15 @@ package main
 import (
 	"io"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/kkdai/youtube/v2"
 )
 
-func ExampleClient(arg string) {
+func ExampleClient(arg string) string {
 
 	client := youtube.Client{}
-
 	video, err := client.GetVideo(arg)
 	if err != nil {
 		panic(err)
@@ -22,8 +23,15 @@ func ExampleClient(arg string) {
 		panic(err)
 	}
 	defer stream.Close()
+	filename := ""
 
-	file, err := os.Create(video.Title + ".mp4")
+	filename = video.Title
+	maxLength := 20
+	if len(video.Title) > maxLength {
+		filename = video.Title[0:maxLength]
+	}
+
+	file, err := os.Create(filename + ".mp4")
 	if err != nil {
 		panic(err)
 	}
@@ -33,9 +41,16 @@ func ExampleClient(arg string) {
 	if err != nil {
 		panic(err)
 	}
+	return file.Name()
+
 }
 
 func main() {
 	arg := os.Args[1]
-	ExampleClient(arg)
+	print(arg)
+	filename := ExampleClient(arg)
+	defer os.Remove(filename)
+	woutMp4 := strings.Split(filename, ".")[0]
+	cmd := exec.Command("ffmpeg", "-i", filename, "-q:a", "0", "-map", "a", woutMp4+".mp3")
+	cmd.Run()
 }
